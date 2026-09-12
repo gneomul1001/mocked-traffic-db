@@ -1,0 +1,1245 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>대중교통 노선 관리 시스템</title>
+    <style>
+        :root {
+            --primary-color: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger-color: #dc2626;
+            --danger-hover: #b91c1c;
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --sidebar-width: 320px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* 레이아웃 스타일 */
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: #ffffff;
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        /* 사이드바 구성 */
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header h2 {
+            font-size: 1.15rem;
+            color: var(--primary-color);
+            margin-bottom: 12px;
+        }
+
+        .search-box {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box:focus {
+            border-color: var(--primary-color);
+        }
+
+        .sidebar-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+        }
+
+        .sidebar-footer {
+            padding: 12px 16px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 8px;
+            background-color: #f8fafc;
+        }
+
+        /* 트리 뷰 스타일 */
+        .tree-node {
+            list-style: none;
+            margin-left: 12px;
+        }
+
+        .tree-root {
+            padding-left: 0;
+        }
+
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--text-main);
+            margin-bottom: 2px;
+            user-select: none;
+            transition: background-color 0.15s;
+        }
+
+        .tree-item:hover {
+            background-color: #f1f5f9;
+        }
+
+        .tree-item.active {
+            background-color: #eff6ff;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+
+        .tree-toggle {
+            width: 16px;
+            text-align: center;
+            margin-right: 4px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* 메인 컨텐츠 구성 */
+        .header-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
+        }
+
+        /* 정보 그리드 */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .info-item label {
+            display: block;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .info-item span {
+            font-size: 1rem;
+            font-weight: 500;
+        }
+
+        /* 버튼 스타일 */
+        .btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s, opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .btn-danger {
+            background-color: var(--danger-color);
+            color: white;
+        }
+        .btn-danger:hover {
+            background-color: var(--danger-hover);
+        }
+
+        .btn-secondary {
+            background-color: #e2e8f0;
+            color: var(--text-main);
+        }
+        .btn-secondary:hover {
+            background-color: #cbd5e1;
+        }
+
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 0.75rem;
+        }
+
+        /* 대중교통 유형 및 노선 관리 아코디언/카드 */
+        .transit-type-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .transit-card {
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: #ffffff;
+            overflow: hidden;
+        }
+
+        .transit-header {
+            padding: 12px 16px;
+            background-color: #f8fafc;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .transit-header h4 {
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            background-color: #e2e8f0;
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-weight: normal;
+        }
+
+        .transit-body {
+            padding: 16px;
+        }
+
+        /* 테이블 스타일 */
+        .route-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        .route-table th, .route-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .route-table th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .color-preview {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 4px;
+            vertical-align: middle;
+            margin-right: 6px;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+
+        /* 모달 스타일 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+
+        .modal {
+            background: white;
+            padding: 24px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .modal h3 {
+            margin-bottom: 16px;
+            font-size: 1.2rem;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 24px;
+        }
+
+        .error-text {
+            color: var(--danger-color);
+            font-size: 0.75rem;
+            margin-top: 4px;
+            display: none;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                overflow: auto;
+            }
+            .sidebar {
+                width: 100%;
+                height: 350px;
+            }
+            .main-content {
+                height: auto;
+                overflow: visible;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 사이드바 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h2>지역 탐색</h2>
+            <input type="text" id="searchInput" class="search-box" placeholder="지역 검색 (대륙, 국가, 행정구역...)">
+        </div>
+        <div class="sidebar-body" id="regionTreeContainer">
+            <!-- 지역 트리 렌더링 영역 -->
+        </div>
+        <div class="sidebar-footer">
+            <button class="btn btn-secondary btn-sm" onclick="exportData()" style="flex:1;">내보내기</button>
+            <button class="btn btn-secondary btn-sm" onclick="triggerImport()" style="flex:1;">가져오기</button>
+            <button class="btn btn-danger btn-sm" onclick="resetData()" style="flex:1;">초기화</button>
+            <input type="file" id="importFile" style="display:none" accept=".json" onchange="importData(event)">
+        </div>
+    </div>
+
+    <!-- 메인 컨텐츠 영역 -->
+    <div class="main-content">
+        <div class="header-actions">
+            <button class="btn btn-primary" onclick="openAddTransitModal()">+ 대중교통 유형 추가</button>
+        </div>
+
+        <!-- 지역 정보 카드 -->
+        <div class="card">
+            <div class="card-title">
+                <span>지역 정보</span>
+                <div id="regionActionButtons">
+                    <!-- 선택된 지역 관련 관리 버튼 동적 생성 -->
+                </div>
+            </div>
+            <div class="info-grid">
+                <div class="info-item">
+                    <label>지역명</label>
+                    <span id="infoName">-</span>
+                </div>
+                <div class="info-item">
+                    <label>행정 단계</label>
+                    <span id="infoLevel">-</span>
+                </div>
+                <div class="info-item">
+                    <label>상위 지역</label>
+                    <span id="infoParent">-</span>
+                </div>
+                <div class="info-item" style="grid-column: 1 / -1;">
+                    <label>전체 경로</label>
+                    <span id="infoFullPath" style="color: var(--primary-color);">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 대중교통 유형 및 노선 관리 카드 -->
+        <div class="card">
+            <div class="card-title">
+                <span>대중교통 유형 및 노선 목록</span>
+            </div>
+            <div id="transitTypeContainer" class="transit-type-container">
+                <!-- 대중교통 유형 및 노선 목록 렌더링 영역 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 범용 모달 -->
+    <div class="modal-overlay" id="commonModal">
+        <div class="modal">
+            <h3 id="modalTitle">제목</h3>
+            <div id="modalBody">
+                <!-- 동적 폼 요소 -->
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">취소</button>
+                <button class="btn btn-primary" id="modalSubmitBtn">확인</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 행정 단계 매핑
+        const LEVEL_NAMES = {
+            'continent': '대륙',
+            'country': '국가',
+            'level1': '1단계 행정구역',
+            'level2': '2단계 행정구역',
+            'level3': '3단계 행정구역',
+            'level4': '4단계 행정구역'
+        };
+
+        const LEVEL_HIERARCHY = ['continent', 'country', 'level1', 'level2', 'level3', 'level4'];
+
+        // 기본 샘플 데이터
+        const DEFAULT_DATA = [
+            {
+                id: "region-asia",
+                name: "아시아",
+                level: "continent",
+                children: [
+                    {
+                        id: "region-kr",
+                        name: "대한민국",
+                        level: "country",
+                        children: [
+                            {
+                                id: "region-seoul",
+                                name: "서울특별시",
+                                level: "level1",
+                                children: [],
+                                transitTypes: [
+                                    {
+                                        id: "transit-seoul-subway",
+                                        name: "도시철도",
+                                        routes: [
+                                            { id: "route-1", name: "1호선", number: "1", color: "#0052A4", note: "수도권 전철 1호선" },
+                                            { id: "route-2", name: "2호선", number: "2", color: "#00A651", note: "순환선" }
+                                        ]
+                                    },
+                                    {
+                                        id: "transit-seoul-bus",
+                                        name: "시내버스",
+                                        routes: [
+                                            { id: "route-150", name: "150번", number: "150", color: "#32CD32", note: "간선버스" }
+                                        ]
+                                    }
+                                ]
+                            },
+                            {
+                                id: "region-busan",
+                                name: "부산광역시",
+                                level: "level1",
+                                children: [],
+                                transitTypes: [
+                                    {
+                                        id: "transit-busan-subway",
+                                        name: "도시철도",
+                                        routes: [
+                                            { id: "route-b1", name: "1호선", number: "1", color: "#F06A00", note: "다대포해수욕장 ~ 노포" },
+                                            { id: "route-b2", name: "2호선", number: "2", color: "#82C91E", note: "양산 ~ 장산" }
+                                        ]
+                                    }
+                                ]
+                            }
+                        ],
+                        transitTypes: []
+                    }
+                ],
+                transitTypes: []
+            }
+        ];
+
+        // 앱 상태 관리
+        let dbData = [];
+        let selectedRegionId = null;
+        let searchQuery = "";
+
+        // 초기화 및 데이터 로드
+        function initApp() {
+            const savedData = localStorage.getItem('transport_manager_data');
+            if (savedData) {
+                try {
+                    dbData = JSON.parse(savedData);
+                } catch (e) {
+                    dbData = DEFAULT_DATA;
+                }
+            } else {
+                dbData = DEFAULT_DATA;
+            }
+
+            // 기본 선택 항목 설정 (최초 로드 시 첫 번째 항목 또는 대한민국)
+            if (!selectedRegionId && dbData.length > 0) {
+                selectedRegionId = findFirstRegionId(dbData[0]);
+            }
+
+            renderApp();
+
+            // 검색 이벤트 바인딩
+            document.getElementById('searchInput').addEventListener('input', (e) => {
+                searchQuery = e.target.value.trim();
+                renderTree();
+            });
+        }
+
+        function saveData() {
+            localStorage.setItem('transport_manager_data', JSON.stringify(dbData));
+        }
+
+        function findFirstRegionId(node) {
+            if (node.children && node.children.length > 0) {
+                return findFirstRegionId(node.children[0]);
+            }
+            return node.id;
+        }
+
+        // XSS 방지 헬퍼
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+
+        // 전체 렌더링
+        function renderApp() {
+            renderTree();
+            renderMainContent();
+        }
+
+        // 1. 트리 렌더링 및 검색
+        function renderTree() {
+            const container = document.getElementById('regionTreeContainer');
+            container.innerHTML = '';
+
+            const ul = document.createElement('ul');
+            ul.className = 'tree-node tree-root';
+
+            let hasResult = false;
+
+            function buildTreeNodes(nodes, parentUl) {
+                nodes.forEach(node => {
+                    const matchesSearch = searchQuery === "" || node.name.toLowerCase().includes(searchQuery.toLowerCase());
+                    
+                    // 하위 노드 중에 검색어가 포함되어 있는지 확인
+                    let childMatches = false;
+                    if (node.children && node.children.length > 0) {
+                        node.children.forEach(child => {
+                            if (checkMatch(child, searchQuery)) childMatches = true;
+                        });
+                    }
+
+                    if (searchQuery !== "" && !matchesSearch && !childMatches) {
+                        return; // 검색어와 무관하면 스킵
+                    }
+
+                    hasResult = true;
+                    const li = document.createElement('li');
+                    li.className = 'tree-node';
+
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = `tree-item ${node.id === selectedRegionId ? 'active' : ''}`;
+                    
+                    const hasChildren = node.children && node.children.length > 0;
+                    itemDiv.innerHTML = `<span class="tree-toggle">${hasChildren ? '▼' : '•'}</span><span>${escapeHtml(node.name)}</span>`;
+                    
+                    itemDiv.onclick = (e) => {
+                        e.stopPropagation();
+                        selectedRegionId = node.id;
+                        renderApp();
+                    };
+
+                    li.appendChild(itemDiv);
+
+                    if (hasChildren) {
+                        const childUl = document.createElement('ul');
+                        childUl.className = 'tree-node';
+                        buildTreeNodes(node.children, childUl);
+                        li.appendChild(childUl);
+                    }
+
+                    parentUl.appendChild(li);
+                });
+            }
+
+            function checkMatch(node, query) {
+                if (query === "") return true;
+                if (node.name.toLowerCase().includes(query.toLowerCase())) return true;
+                if (node.children) {
+                    return node.children.some(child => checkMatch(child, query));
+                }
+                return false;
+            }
+
+            buildTreeNodes(dbData, ul);
+
+            if (!hasResult) {
+                container.innerHTML = '<div style="padding: 12px; color: var(--text-muted); font-size: 0.9rem; text-align: center;">검색 결과가 없습니다.</div>';
+            } else {
+                container.appendChild(ul);
+            }
+        }
+
+        // 특정 ID로 지역 객체 및 경로 찾기
+        function findRegionAndPath(nodes, targetId, currentPath = []) {
+            for (let node of nodes) {
+                const newPath = [...currentPath, node];
+                if (node.id === targetId) {
+                    return { node, path: newPath };
+                }
+                if (node.children && node.children.length > 0) {
+                    const result = findRegionAndPath(node.children, targetId, newPath);
+                    if (result) return result;
+                }
+            }
+            return null;
+        }
+
+        // 2. 메인 컨텐츠 렌더링
+        function renderMainContent() {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) {
+                document.getElementById('infoName').innerText = '-';
+                document.getElementById('infoLevel').innerText = '-';
+                document.getElementById('infoParent').innerText = '-';
+                document.getElementById('infoFullPath').innerText = '-';
+                document.getElementById('regionActionButtons').innerHTML = '';
+                document.getElementById('transitTypeContainer').innerHTML = '';
+                return;
+            }
+
+            const { node, path } = found;
+
+            // 지역 정보 표시
+            document.getElementById('infoName').innerText = node.name;
+            document.getElementById('infoLevel').innerText = LEVEL_NAMES[node.level] || node.level;
+            
+            const parentNode = path.length > 1 ? path[path.length - 2] : null;
+            document.getElementById('infoParent').innerText = parentNode ? parentNode.name : '없음 (최상위)';
+            document.getElementById('infoFullPath').innerText = path.map(p => p.name).join(' > ');
+
+            // 지역 관리 버튼 생성
+            const actionContainer = document.getElementById('regionActionButtons');
+            actionContainer.innerHTML = '';
+            
+            const nextLevelIndex = LEVEL_HIERARCHY.indexOf(node.level) + 1;
+            if (nextLevelIndex < LEVEL_HIERARCHY.length) {
+                const addBtn = document.createElement('button');
+                addBtn.className = 'btn btn-primary btn-sm';
+                addBtn.innerHTML = `+ 하위 지역 추가`;
+                addBtn.onclick = () => openAddRegionModal(node.id);
+                actionContainer.appendChild(addBtn);
+            }
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'btn btn-secondary btn-sm';
+            editBtn.style.marginLeft = '6px';
+            editBtn.innerHTML = '지역 수정';
+            editBtn.onclick = () => openEditRegionModal(node.id);
+            actionContainer.appendChild(editBtn);
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-danger btn-sm';
+            deleteBtn.style.marginLeft = '6px';
+            deleteBtn.innerHTML = '지역 삭제';
+            deleteBtn.onclick = () => deleteRegion(node.id);
+            actionContainer.appendChild(deleteBtn);
+
+            // 대중교통 유형 및 노선 목록 렌더링
+            renderTransitTypes(node);
+        }
+
+        // 3. 대중교통 유형 및 노선 목록 렌더링
+        function renderTransitTypes(regionNode) {
+            const container = document.getElementById('transitTypeContainer');
+            container.innerHTML = '';
+
+            if (!regionNode.transitTypes || regionNode.transitTypes.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 20px;">등록된 대중교통 유형이 없습니다. 상단의 "+ 대중교통 유형 추가" 버튼을 눌러 등록해주세요.</div>';
+                return;
+            }
+
+            regionNode.transitTypes.forEach(transit => {
+                const transitCard = document.createElement('div');
+                transitCard.className = 'transit-card';
+
+                const routeCount = transit.routes ? transit.routes.length : 0;
+
+                let routesHtml = '';
+                if (routeCount === 0) {
+                    routesHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">등록된 노선이 없습니다.</td></tr>';
+                } else {
+                    transit.routes.forEach(route => {
+                        routesHtml += `
+                            <tr>
+                                <td><strong>${escapeHtml(route.name)}</strong></td>
+                                <td>${escapeHtml(route.number)}</td>
+                                <td><span class="color-preview" style="background-color: ${escapeHtml(route.color)};"></span>${escapeHtml(route.color)}</td>
+                                <td>${escapeHtml(route.note || '-')}</td>
+                                <td>
+                                    <button class="btn btn-secondary btn-sm" onclick="openEditRouteModal('${transit.id}', '${route.id}')">수정</button>
+                                    <button class="btn btn-danger btn-sm" onclick="deleteRoute('${transit.id}', '${route.id}')">삭제</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+
+                transitCard.innerHTML = `
+                    <div class="transit-header">
+                        <h4>${escapeHtml(transit.name)} <span class="badge">노선 ${routeCount}개</span></h4>
+                        <div>
+                            <button class="btn btn-primary btn-sm" onclick="openAddRouteModal('${transit.id}')">+ 노선 추가</button>
+                            <button class="btn btn-secondary btn-sm" onclick="openEditTransitModal('${transit.id}')">유형 수정</button>
+                            <button class="btn btn-danger btn-sm" onclick="deleteTransitType('${transit.id}')">유형 삭제</button>
+                        </div>
+                    </div>
+                    <div class="transit-body">
+                        <table class="route-table">
+                            <thead>
+                                <tr>
+                                    <th>노선명</th>
+                                    <th>노선 번호</th>
+                                    <th>색상</th>
+                                    <th>비고</th>
+                                    <th style="width: 120px;">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${routesHtml}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+                container.appendChild(transitCard);
+            });
+        }
+
+        // 모달 제어 함수
+        function showModal(title, bodyHtml, onSubmit) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalBody').innerHTML = bodyHtml;
+            const submitBtn = document.getElementById('modalSubmitBtn');
+            // 기존 이벤트 제거를 위해 clone 사용
+            const newBtn = submitBtn.cloneNode(true);
+            submitBtn.parentNode.replaceChild(newBtn, submitBtn);
+            newBtn.onclick = onSubmit;
+
+            document.getElementById('commonModal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('commonModal').style.display = 'none';
+        }
+
+        // --- 지역 관리 기능 ---
+
+        function openAddRegionModal(parentId) {
+            const parentFound = findRegionAndPath(dbData, parentId);
+            const nextLevel = LEVEL_HIERARCHY[LEVEL_HIERARCHY.indexOf(parentFound.node.level) + 1];
+
+            const html = `
+                <div class="form-group">
+                    <label>상위 지역</label>
+                    <input type="text" class="form-control" value="${escapeHtml(parentFound.node.name)}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>추가할 행정 단계</label>
+                    <input type="text" class="form-control" value="${LEVEL_NAMES[nextLevel]}" disabled>
+                </div>
+                <div class="form-group">
+                    <label>지역명</label>
+                    <input type="text" id="modalInputName" class="form-control" placeholder="예: 해운대구">
+                    <div class="error-text" id="nameError">지역명을 입력해주세요.</div>
+                </div>
+            `;
+
+            showModal('하위 지역 추가', html, () => {
+                const nameInput = document.getElementById('modalInputName');
+                const name = nameInput.value.trim();
+                if (!name) {
+                    document.getElementById('nameError').style.display = 'block';
+                    return;
+                }
+
+                // 동일 이름 중복 체크
+                if (parentFound.node.children.some(child => child.name === name)) {
+                    alert('동일한 이름의 하위 지역이 이미 존재합니다.');
+                    return;
+                }
+
+                const newRegion = {
+                    id: 'region-' + Date.now(),
+                    name: name,
+                    level: nextLevel,
+                    children: [],
+                    transitTypes: []
+                };
+
+                parentFound.node.children.push(newRegion);
+                selectedRegionId = newRegion.id;
+                saveData();
+                closeModal();
+                renderApp();
+            });
+        }
+
+        function openEditRegionModal(regionId) {
+            const found = findRegionAndPath(dbData, regionId);
+            if (!found) return;
+
+            const html = `
+                <div class="form-group">
+                    <label>지역명 수정</label>
+                    <input type="text" id="modalInputName" class="form-control" value="${escapeHtml(found.node.name)}">
+                    <div class="error-text" id="nameError">지역명을 입력해주세요.</div>
+                </div>
+            `;
+
+            showModal('지역 수정', html, () => {
+                const name = document.getElementById('modalInputName').value.trim();
+                if (!name) {
+                    document.getElementById('nameError').style.display = 'block';
+                    return;
+                }
+
+                // 형제 노드 간 중복 체크
+                const parentNode = found.path.length > 1 ? found.path[found.path.length - 2] : null;
+                const siblings = parentNode ? parentNode.children : dbData;
+                if (siblings.some(s => s.id !== regionId && s.name === name)) {
+                    alert('동일한 이름의 지역이 이미 존재합니다.');
+                    return;
+                }
+
+                found.node.name = name;
+                saveData();
+                closeModal();
+                renderApp();
+            });
+        }
+
+        function deleteRegion(regionId) {
+            const found = findRegionAndPath(dbData, regionId);
+            if (!found) return;
+
+            if (found.node.children && found.node.children.length > 0) {
+                if (!confirm(`"${found.node.name}" 하위에 하위 지역이 존재합니다. 정말 삭제하시겠습니까?`)) {
+                    return;
+                }
+            } else {
+                if (!confirm(`"${found.node.name}" 지역을 삭제하시겠습니까?`)) {
+                    return;
+                }
+            }
+
+            function removeRecursive(nodes, id) {
+                const index = nodes.findIndex(n => n.id === id);
+                if (index !== -1) {
+                    nodes.splice(index, 1);
+                    return true;
+                }
+                for (let node of nodes) {
+                    if (node.children && removeRecursive(node.children, id)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            removeRecursive(dbData, regionId);
+            selectedRegionId = dbData.length > 0 ? findFirstRegionId(dbData[0]) : null;
+            saveData();
+            renderApp();
+        }
+
+        // --- 대중교통 유형 관리 기능 ---
+
+        function openAddTransitModal() {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) return;
+
+            const html = `
+                <div class="form-group">
+                    <label>대중교통 유형 이름</label>
+                    <input type="text" id="modalInputTransitName" class="form-control" placeholder="예: 시내버스, 마을버스, 도시철도 등">
+                    <div class="error-text" id="nameError">유형 이름을 입력해주세요.</div>
+                </div>
+            `;
+
+            showModal('대중교통 유형 추가', html, () => {
+                const name = document.getElementById('modalInputTransitName').value.trim();
+                if (!name) {
+                    document.getElementById('nameError').style.display = 'block';
+                    return;
+                }
+
+                if (!found.node.transitTypes) found.node.transitTypes = [];
+
+                if (found.node.transitTypes.some(t => t.name === name)) {
+                    alert('이미 존재하는 대중교통 유형입니다.');
+                    return;
+                }
+
+                found.node.transitTypes.push({
+                    id: 'transit-' + Date.now(),
+                    name: name,
+                    routes: []
+                });
+
+                saveData();
+                closeModal();
+                renderApp();
+            });
+        }
+
+        function openEditTransitModal(transitId) {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) return;
+            const transit = found.node.transitTypes.find(t => t.id === transitId);
+            if (!transit) return;
+
+            const html = `
+                <div class="form-group">
+                    <label>대중교통 유형 이름 수정</label>
+                    <input type="text" id="modalInputTransitName" class="form-control" value="${escapeHtml(transit.name)}">
+                    <div class="error-text" id="nameError">유형 이름을 입력해주세요.</div>
+                </div>
+            `;
+
+            showModal('대중교통 유형 수정', html, () => {
+                const name = document.getElementById('modalInputTransitName').value.trim();
+                if (!name) {
+                    document.getElementById('nameError').style.display = 'block';
+                    return;
+                }
+
+                if (found.node.transitTypes.some(t => t.id !== transitId && t.name === name)) {
+                    alert('이미 존재하는 대중교통 유형 이름입니다.');
+                    return;
+                }
+
+                transit.name = name;
+                saveData();
+                closeModal();
+                renderApp();
+            });
+        }
+
+        function deleteTransitType(transitId) {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) return;
+
+            if (!confirm('해당 대중교통 유형과 소속된 모든 노선이 삭제됩니다. 계속하시겠습니까?')) {
+                return;
+            }
+
+            found.node.transitTypes = found.node.transitTypes.filter(t => t.id !== transitId);
+            saveData();
+            renderApp();
+        }
+
+        // --- 노선 관리 기능 ---
+
+        function openAddRouteModal(transitId) {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) return;
+            const transit = found.node.transitTypes.find(t => t.id === transitId);
+            if (!transit) return;
+
+            const html = `
+                <div class="form-group">
+                    <label>노선명</label>
+                    <input type="text" id="routeName" class="form-control" placeholder="예: 1호선, 100번">
+                    <div class="error-text" id="nameError">노선명을 입력해주세요.</div>
+                </div>
+                <div class="form-group">
+                    <label>노선 번호</label>
+                    <input type="text" id="routeNumber" class="form-control" placeholder="예: 1, 100">
+                    <div class="error-text" id="numberError">노선 번호를 입력해주세요.</div>
+                </div>
+                <div class="form-group">
+                    <label>노선 색상 (HEX 코드)</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" id="routeColor" class="form-control" placeholder="#0052A4" value="#0052A4" oninput="updateColorPreview()">
+                        <input type="color" id="colorPicker" value="#0052A4" style="width: 40px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;" onchange="syncColorPicker()">
+                    </div>
+                    <div class="error-text" id="colorError">올바른 HEX 코드 형식(#RRGGBB)이 아닙니다.</div>
+                </div>
+                <div class="form-group">
+                    <label>비고</label>
+                    <input type="text" id="routeNote" class="form-control" placeholder="기타 설명 입력">
+                </div>
+            `;
+
+            showModal('노선 추가', html, () => {
+                const name = document.getElementById('routeName').value.trim();
+                const number = document.getElementById('routeNumber').value.trim();
+                const color = document.getElementById('routeColor').value.trim();
+                const note = document.getElementById('routeNote').value.trim();
+
+                let hasError = false;
+                if (!name) { document.getElementById('nameError').style.display = 'block'; hasError = true; } else { document.getElementById('nameError').style.display = 'none'; }
+                if (!number) { document.getElementById('numberError').style.display = 'block'; hasError = true; } else { document.getElementById('numberError').style.display = 'none'; }
+                
+                // HEX 형식 검증 검사 (#RRGGBB)
+                const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+                if (!hexRegex.test(color)) {
+                    document.getElementById('colorError').style.display = 'block';
+                    hasError = true;
+                } else {
+                    document.getElementById('colorError').style.display = 'none';
+                }
+
+                if (hasError) return;
+
+                if (transit.routes.some(r => r.name === name)) {
+                    alert('동일한 이름의 노선이 이미 존재합니다.');
+                    return;
+                }
+
+                transit.routes.push({
+                    id: 'route-' + Date.now(),
+                    name,
+                    number,
+                    color,
+                    note
+                });
+
+                saveData();
+                closeModal();
+                renderApp();
+            });
+        }
+
+        function openEditRouteModal(transitId, routeId) {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) return;
+            const transit = found.node.transitTypes.find(t => t.id === transitId);
+            if (!transit) return;
+            const route = transit.routes.find(r => r.id === routeId);
+            if (!route) return;
+
+            const html = `
+                <div class="form-group">
+                    <label>노선명</label>
+                    <input type="text" id="routeName" class="form-control" value="${escapeHtml(route.name)}">
+                    <div class="error-text" id="nameError">노선명을 입력해주세요.</div>
+                </div>
+                <div class="form-group">
+                    <label>노선 번호</label>
+                    <input type="text" id="routeNumber" class="form-control" value="${escapeHtml(route.number)}">
+                    <div class="error-text" id="numberError">노선 번호를 입력해주세요.</div>
+                </div>
+                <div class="form-group">
+                    <label>노선 색상 (HEX 코드)</label>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="text" id="routeColor" class="form-control" value="${escapeHtml(route.color)}" oninput="updateColorPreview()">
+                        <input type="color" id="colorPicker" value="${escapeHtml(route.color)}" style="width: 40px; height: 38px; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;" onchange="syncColorPicker()">
+                    </div>
+                    <div class="error-text" id="colorError">올바른 HEX 코드 형식(#RRGGBB)이 아닙니다.</div>
+                </div>
+                <div class="form-group">
+                    <label>비고</label>
+                    <input type="text" id="routeNote" class="form-control" value="${escapeHtml(route.note || '')}">
+                </div>
+            `;
+
+            showModal('노선 수정', html, () => {
+                const name = document.getElementById('routeName').value.trim();
+                const number = document.getElementById('routeNumber').value.trim();
+                const color = document.getElementById('routeColor').value.trim();
+                const note = document.getElementById('routeNote').value.trim();
+
+                let hasError = false;
+                if (!name) { document.getElementById('nameError').style.display = 'block'; hasError = true; } else { document.getElementById('nameError').style.display = 'none'; }
+                if (!number) { document.getElementById('numberError').style.display = 'block'; hasError = true; } else { document.getElementById('numberError').style.display = 'none'; }
+                
+                const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+                if (!hexRegex.test(color)) {
+                    document.getElementById('colorError').style.display = 'block';
+                    hasError = true;
+                } else {
+                    document.getElementById('colorError').style.display = 'none';
+                }
+
+                if (hasError) return;
+
+                if (transit.routes.some(r => r.id !== routeId && r.name === name)) {
+                    alert('동일한 이름의 노선이 이미 존재합니다.');
+                    return;
+                }
+
+                route.name = name;
+                route.number = number;
+                route.color = color;
+                route.note = note;
+
+                saveData();
+                closeModal();
+                renderApp();
+            });
+        }
+
+        function deleteRoute(transitId, routeId) {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            if (!found) return;
+            const transit = found.node.transitTypes.find(t => t.id === transitId);
+            if (!transit) return;
+
+            if (!confirm('정말로 이 노선을 삭제하시겠습니까?')) return;
+
+            transit.routes = transit.routes.filter(r => r.id !== routeId);
+            saveData();
+            renderApp();
+        }
+
+        // 색상 입력 동기화 헬퍼
+        function updateColorPreview() {
+            const colorInput = document.getElementById('routeColor').value;
+            const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+            if (hexRegex.test(colorInput)) {
+                document.getElementById('colorPicker').value = colorInput;
+            }
+        }
+
+        function syncColorPicker() {
+            const pickerValue = document.getElementById('colorPicker').value;
+            document.getElementById('routeColor').value = pickerValue.toUpperCase();
+        }
+
+        // --- 데이터 관리 (초기화, 내보내기, 가져오기) ---
+
+        function resetData() {
+            if (confirm('모든 데이터가 초기 샘플 데이터로 초기화됩니다. 계속하시겠습니까?')) {
+                localStorage.removeItem('transport_manager_data');
+                dbData = DEFAULT_DATA;
+                selectedRegionId = findFirstRegionId(dbData[0]);
+                renderApp();
+                alert('데이터가 초기화되었습니다.');
+            }
+        }
+
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(dbData, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "public_transport_data.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        function triggerImport() {
+            document.getElementById('importFile').click();
+        }
+
+        function importData(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    if (!Array.isArray(parsedData)) {
+                        throw new Error('올바른 데이터 형식이 아닙니다.');
+                    }
+                    dbData = parsedData;
+                    selectedRegionId = dbData.length > 0 ? findFirstRegionId(dbData[0]) : null;
+                    saveData();
+                    renderApp();
+                    alert('성공적으로 데이터를 가져왔습니다.');
+                } catch (err) {
+                    alert('JSON 파일 형식이 올바르지 않거나 손상되었습니다: ' + err.message);
+                }
+                event.target.value = ''; // 파일 입력 초기화
+            };
+            reader.readAsText(file);
+        }
+
+        // 앱 실행
+        window.onload = initApp;
+    </script>
+</body>
+</html>
