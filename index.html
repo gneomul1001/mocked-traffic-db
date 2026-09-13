@@ -230,6 +230,14 @@
             background-color: #cbd5e1;
         }
 
+        .btn-success {
+            background-color: #16a34a;
+            color: white;
+        }
+        .btn-success:hover {
+            background-color: #15803d;
+        }
+
         .btn-sm {
             padding: 4px 8px;
             font-size: 0.75rem;
@@ -374,13 +382,6 @@
             justify-content: flex-end;
             gap: 8px;
             margin-top: 24px;
-        }
-
-        .error-text {
-            color: var(--danger-color);
-            font-size: 0.75rem;
-            margin-top: 4px;
-            display: none;
         }
 
         @media (max-width: 768px) {
@@ -659,7 +660,7 @@
 
                 let pathsHtml = '';
                 if (!route.paths || route.paths.length === 0) {
-                    pathsHtml = '<tr><td colspan="4" style="text-align: center; color: var(--text-muted);">등록된 경로(역/정류장)가 없습니다.</td></tr>';
+                    pathsHtml = '<tr><td colspan="5" style="text-align: center; color: var(--text-muted);">등록된 경로(역/정류장)가 없습니다.</td></tr>';
                 } else {
                     route.paths.forEach((p, idx) => {
                         pathsHtml += `
@@ -695,7 +696,10 @@
                     <div class="card">
                         <div class="card-title">
                             <span>노선 경로 목록 (역/정류장 순서)</span>
-                            <button class="btn btn-primary btn-sm" onclick="openAddRoutePathModal('${transit.id}', '${route.id}')">+ 경로(역/정류장) 추가</button>
+                            <div style="display: flex; gap: 8px;">
+                                <button class="btn btn-success btn-sm" onclick="openCopyRouteModal('${transit.id}', '${route.id}')">📋 노선 복사</button>
+                                <button class="btn btn-primary btn-sm" onclick="openAddRoutePathModal('${transit.id}', '${route.id}')">+ 경로(역/정류장) 추가</button>
+                            </div>
                         </div>
                         <table class="route-table">
                             <thead>
@@ -744,6 +748,7 @@
                                         <td><span class="color-preview" style="background-color: ${escapeHtml(route.color)};"></span>${escapeHtml(route.color)}</td>
                                         <td>${escapeHtml(route.note || '-')}</td>
                                         <td>
+                                            <button class="btn btn-success btn-sm" onclick="openCopyRouteModal('${transit.id}', '${route.id}')" title="복사">복사</button>
                                             <button class="btn btn-secondary btn-sm" onclick="openEditRouteModal('${transit.id}', '${route.id}')">수정</button>
                                             <button class="btn btn-danger btn-sm" onclick="deleteRoute('${transit.id}', '${route.id}')">삭제</button>
                                         </td>
@@ -770,7 +775,7 @@
                                                 <th>노선 번호</th>
                                                 <th>색상</th>
                                                 <th>비고</th>
-                                                <th style="width: 120px;">관리</th>
+                                                <th style="width: 150px;">관리</th>
                                             </tr>
                                         </thead>
                                         <tbody>${routesHtml}</tbody>
@@ -958,6 +963,49 @@
             transit.routes = transit.routes.filter(r => r.id !== routeId);
             if (selectedRouteInfo && selectedRouteInfo.routeId === routeId) selectedRouteInfo = null;
             saveData(); renderApp();
+        }
+
+        // --- 노선 복사 기능 ---
+        function openCopyRouteModal(transitId, routeId) {
+            const found = findRegionAndPath(dbData, selectedRegionId);
+            const transit = found.node.transitTypes.find(t => t.id === transitId);
+            const route = transit.routes.find(r => r.id === routeId);
+
+            showModal('노선 복사', `
+                <div class="form-group"><label>새 노선명</label><input type="text" id="copyRouteName" class="form-control" value="${escapeHtml(route.name)} (복사본)"></div>
+                <div class="form-group"><label>새 노선 번호</label><input type="text" id="copyRouteNumber" class="form-control" value="${escapeHtml(route.number)}-copy"></div>
+                <div class="form-group"><label>색상 (HEX)</label><input type="text" id="copyRouteColor" class="form-control" value="${escapeHtml(route.color)}"></div>
+                <div class="form-group"><label>비고</label><input type="text" id="copyRouteNote" class="form-control" value="${escapeHtml(route.note || '')}"></div>
+            `, () => {
+                const name = document.getElementById('copyRouteName').value.trim();
+                const number = document.getElementById('copyRouteNumber').value.trim();
+                const color = document.getElementById('copyRouteColor').value.trim();
+                const note = document.getElementById('copyRouteNote').value.trim();
+                if (!name || !number) return alert('노선명과 번호를 모두 입력해주세요.');
+                if (!/^#[0-9A-Fa-f]{6}$/.test(color)) return alert('올바른 HEX 코드 형식(#RRGGBB)이 아닙니다.');
+
+                // 깊은 복사(Deep Copy)를 통해 경로(역/정류장) 목록까지 함께 복사
+                const clonedPaths = route.paths ? route.paths.map(p => ({
+                    id: 'path-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4),
+                    name: p.name,
+                    code: p.code,
+                    note: p.note
+                })) : [];
+
+                const newRoute = {
+                    id: 'route-' + Date.now(),
+                    name,
+                    number,
+                    color,
+                    note,
+                    paths: clonedPaths
+                };
+
+                transit.routes.push(newRoute);
+                saveData(); 
+                closeModal(); 
+                renderApp();
+            });
         }
 
         // --- 노선 경로(정류장/역) 관리 함수들 ---
